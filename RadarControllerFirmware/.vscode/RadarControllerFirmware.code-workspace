@@ -1,8 +1,8 @@
 {
 	"folders": [
 		{
-			"name": "RadarControllerFirmware",
-			"path": ".."
+			"name": "EasyBakeFirmware",
+			"path": "../../../EasyBake/EasyBakeFirmware"
 		}
 	],
 	"settings": {}

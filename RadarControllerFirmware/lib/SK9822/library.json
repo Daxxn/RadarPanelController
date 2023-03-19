@@ -1,0 +1,13 @@
+{
+  "name": "SK9822",
+  "description": "Driver for SK9822 based addressable LEDs.",
+  "authors": [
+      {
+          "name": "Daxxn",
+          "url": "https://github.com/Daxxn",
+          "maintainer": true
+      }
+  ],
+  "version": "0.0.1",
+  "frameworks": "arduino"
+}

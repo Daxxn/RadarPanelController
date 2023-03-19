@@ -1,0 +1,13 @@
+{
+  "name": "SIC451",
+  "description": "Interface library for SMPS SIC451 I2C bus.",
+  "authors": [
+      {
+          "name": "Daxxn",
+          "url": "https://github.com/Daxxn",
+          "maintainer": true
+      }
+  ],
+  "version": "0.1.0",
+  "frameworks": "arduino"
+}
