@@ -25,9 +25,16 @@ void SK9822::Clear()
   }
 }
 
-void SK9822::SetBrightness(uint8_t bright)
+void SK9822::SetGlobalBrightness(uint8_t bright)
 {
-  _globalBright = bright;
+  if (bright > 31)
+  {
+    _globalBright = 31;
+  }
+  else
+  {
+    _globalBright = bright;
+  }
 }
 
 void SK9822::SetRGB(int index, uint8_t red, uint8_t green, uint8_t blue)
@@ -45,7 +52,7 @@ void SK9822::SetAllRGB(uint8_t red, uint8_t green, uint8_t blue)
 
 void SK9822::SetAllRGB(uint8_t bright, uint8_t red, uint8_t green, uint8_t blue)
 {
-  SetBrightness(bright);
+  SetGlobalBrightness(bright);
   SetAllRGB(red, green, blue);
 }
 
@@ -82,7 +89,7 @@ void SK9822::SendLEDs()
   for (size_t i = 0; i < _ledCount; i++)
   {
     // Send the global brightness first.
-    SPI.transfer(0xE0 | _globalBright);
+    SPI.transfer(0b11100000 | (_globalBright & 0b11111));
     SPI.transfer(_leds[i].blue);
     SPI.transfer(_leds[i].green);
     SPI.transfer(_leds[i].red);

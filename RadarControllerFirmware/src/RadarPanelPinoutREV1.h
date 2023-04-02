@@ -6,19 +6,22 @@
 
 namespace Digitl {
 	namespace PANELPins {
-		const int STATUS_PIN = 4;
 		const int LIGHTS_EN_PIN = 5;
 		const int BACKLIGHT_PIN = 6;
-		const int ERROR_PIN = 8;
-		const int TERR_PIN = 9;
-		const int WXR_PIN = 10;
+		const int TERR_IND_PIN = 9;
+		const int WXR_IND_PIN = 10;
 		const int WXR_SW_PIN = INT2;
 		const int TERR_SW_PIN = INT3;
 	}
+	namespace IndicatorPins {
+		const int STATUS_IND_PIN = 4;
+		const int SWITCH_IND_PIN = 5;
+		const int ERROR_IND_PIN = 8;
+		const int ENABLE_SW_PIN = 13;
+	}
 	namespace PWRPins {
 		const int PGOOD_PIN = 12;
-		const int LIGHTS_EN_PIN = 13;
-		const int PWR_EN_PIN = 11;
+		const int PWR_EN_PIN = 17;
 		const int SALERT_PIN = INT6;
 	}
 }
@@ -28,7 +31,7 @@ namespace Anlg {
 	}
 }
 namespace Ser {
-	const int SIC = 0x16;
+	const int SIC = 23;
 }
 
 // Author: Daxxn

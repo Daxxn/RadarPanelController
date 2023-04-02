@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "SIC451.h"
+#include "Utils.h"
 
 SIC451::SIC451(TwoWire* wire, uint8_t address, void (*interrupt)(void), int pGoodPin, int sAlertPin, int enablePin)
 {
@@ -19,6 +20,8 @@ SIC451::SIC451(TwoWire* wire, uint8_t address, void (*interrupt)(void), int pGoo
 
   this->_writeAddr = address;
   this->_readAddr = address + 1;
+
+  this->_buffer = new uint8_t[PMBUS_BUFFER_LEN];
 }
 
 SIC451::SIC451(TwoWire* wire, uint8_t address, int pGoodPin, int sAlertPin, int enablePin)
@@ -37,16 +40,24 @@ SIC451::SIC451(TwoWire* wire, uint8_t address, int pGoodPin, int sAlertPin, int 
   this->_readAddr = address + 1;
 }
 
+SIC451::~SIC451()
+{
+  delete[] this->_buffer;
+}
+
 #pragma region PMBus Functions
 void SIC451::GetStatus()
 {
-  Serial.println("Init word union");
-  tempWord.word = 0;
-  Serial.println("Entering ReadCommand()");
-  this->ReadCommand(SICConsts::SICRegisters::STATUS_WORD);
-  Serial.println("Parsing status");
-  ParseStatus(tempWord.word);
-  Serial.println("Status parse complete.");
+  this->ReadCommand(PMBUS_COMMAND::STATUS_WORD, 2);
+  // ParseStatus(this->_word.value);
+  ParseStatus(CombineBytes(this->_buffer));
+  Serial.print(this->_status.BUSY);
+  Serial.print(' ');
+  Serial.print(this->_status.PWR_GOOD);
+  Serial.print(' ');
+  Serial.print(this->_status.Input_Faults);
+  Serial.print(' ');
+  Serial.println(this->_status.OTHER_Faults);
 }
 #pragma endregion
 
@@ -80,49 +91,69 @@ bool SIC451::CheckAlert()
   this->_alert = digitalRead(this->_sAlertPin);
   return this->_alert;
 }
+
+void SIC451::SetWriteProtect(PMBUS_WRITEPROTECT protect)
+{
+  this->WriteCommand(PMBUS_COMMAND::WRITE_PROTECT, protect);
+}
+
+double SIC451::GetVOUT()
+{
+  // Not working...
+  // uint8_t modeByte = this->ReadByteCommand(PMBUS_COMMAND::VOUT_MODE);
+  // uint8_t exp = modeByte & 0b11111;
+  // delay(50);
+  this->ReadCommand(PMBUS_COMMAND::READ_VOUT, 2);
+  // uint16_t voutBytes = this->_word.value;
+  uint16_t voutBytes = CombineBytes(this->_buffer);
+  this->_monitors.VOUT.base = voutBytes;
+  Serial.print(this->_monitors.VOUT.exp);
+  Serial.print(' ');
+  Serial.println(voutBytes);
+  return this->_monitors.VOUT.Calc();
+}
 #pragma endregion
 
 #pragma region Internal PMBus Comms
-void SIC451::WriteCommand(uint8_t command, uint8_t data)
+void SIC451::WriteCommand(PMBUS_COMMAND command, uint8_t data)
 {
-  this->_wire->beginTransmission(this->_writeAddr);
+  this->_wire->beginTransmission(this->_address);
   this->_wire->write(command);
   this->_wire->write(data);
   this->_wire->endTransmission();
 }
 
-void SIC451::ReadCommand(uint8_t command, uint8_t* buffer, uint8_t len)
+void SIC451::ReadCommand(PMBUS_COMMAND command, uint8_t* buffer, uint8_t len)
 {
-  this->_wire->beginTransmission(this->_readAddr);
+  this->_wire->beginTransmission(this->_address);
   this->_wire->write(command);
   this->_wire->endTransmission();
-  this->_wire->requestFrom(this->_readAddr, len);
+  this->_wire->requestFrom(this->_address, len);
   this->_wire->readBytes(buffer, len);
 }
 
-void SIC451::ReadCommand(uint8_t command)
+void SIC451::ReadCommand(PMBUS_COMMAND command, size_t len)
 {
-  Serial.println("Sending Command");
-
-  this->_wire->requestFrom(this->_readAddr, (uint8_t)2);
-  this->_wire->write(command);
-  uint8_t wordTop = this->_wire->read();
-  uint8_t wordBot = this->_wire->read();
-
-  // this->_wire->beginTransmission(this->_readAddr);
+  // this->_wire->requestFrom(this->_address, len);
   // this->_wire->write(command);
-  // this->_wire->endTransmission();
-  // Serial.println("Command sent, getting status");
-  // this->_wire->requestFrom(this->_readAddr, (uint8_t)2);
-  // uint8_t wordTop = this->_wire->read();
-  // uint8_t wordBot = this->_wire->read();
-  Serial.print(wordTop);
-  Serial.print(' ');
-  Serial.println(wordBot);
-  tempWord.top = wordTop;
-  tempWord.bot = wordBot;
-  Serial.print("Status returned - ");
-  Serial.println(tempWord.word);
+  // this->_wire->readBytes(this->_buffer, len);
+  this->_wire->beginTransmission(this->_address);
+  this->_wire->write(command);
+  this->_wire->endTransmission();
+  this->_wire->requestFrom(this->_address, len);
+  this->_wire->readBytes(this->_buffer, len);
+}
+
+uint8_t SIC451::ReadByteCommand(PMBUS_COMMAND command)
+{
+  // this->_wire->requestFrom(this->_address, (uint8_t)1);
+  // this->_wire->write(command);
+  // return this->_wire->read();
+  this->_wire->beginTransmission(this->_address);
+  this->_wire->write(command);
+  this->_wire->endTransmission();
+  this->_wire->requestFrom(this->_readAddr, (uint8_t)1);
+  return this->_wire->read();
 }
 #pragma endregion
 
@@ -147,10 +178,10 @@ void SIC451::ParseStatus(uint16_t value)
 #pragma endregion
 
 #pragma region Testing
-uint16_t SIC451::GetVOUT_TEST()
+uint16_t SIC451::TEST()
 {
-  tempWord.word = 0;
-  this->ReadCommand(SICConsts::SICRegisters::READ_IOUT);
-  return tempWord.word;
+  this->WriteCommand(PMBUS_COMMAND::WRITE_PROTECT, PMBUS_WRITEPROTECT::ENABLE);
+  Serial.println(this->ReadByteCommand(PMBUS_COMMAND::WRITE_PROTECT));
+  return 0;
 }
 #pragma endregion

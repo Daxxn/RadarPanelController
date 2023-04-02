@@ -49,7 +49,7 @@ public:
   void Begin();
   void Clear();
 
-  void SetBrightness(uint8_t brgt);
+  void SetGlobalBrightness(uint8_t brgt);
 
   void SendLEDs();
 
